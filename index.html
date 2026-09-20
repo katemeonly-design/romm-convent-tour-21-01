@@ -34,6 +34,18 @@
   header h1 { margin: 0; font-size: 1.15rem; font-weight: 650; letter-spacing: 0.01em; text-shadow: 0 1px 8px rgba(0,0,0,.45); padding-right: 56px; }
   header p  { margin: 3px 0 0; font-size: 0.86rem; opacity: 0.85; text-shadow: 0 1px 6px rgba(0,0,0,.45); padding-right: 56px; }
 
+
+  #brand { margin: 0 0 6px; font-size: 0.78rem; font-weight: 650; letter-spacing: 0.06em; text-shadow: 0 1px 6px rgba(0,0,0,.45); opacity: .95; }
+  /* Labels placed inside the 360 photo */
+  .pin { transform: translate(-50%, -50%); }
+  .pin span {
+    display: inline-block; white-space: nowrap; padding: 8px 16px; border-radius: 999px;
+    background: rgba(255,255,255,.94); color: var(--ink);
+    font: 650 0.9rem/1 var(--font); letter-spacing: .02em;
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  }
+  .pin.note span { font-weight: 550; background: var(--glass); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--line); }
+
   #hint {
     position: fixed; left: 50%; z-index: 5;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
@@ -84,6 +96,7 @@
 <div id="pano"></div>
 
 <header>
+  <div id="brand"></div>
   <h1 id="title"></h1>
   <p id="subtitle"></p>
 </header>
@@ -101,12 +114,17 @@
 /* ==========================================================================
    EDIT THIS PART ONLY
    - title / subtitle: shown at the top of the page
+   - brand: your company name (top of page + floor label in every room)
    - rooms: one line per button, in the order you want them.
        id:   short name with no spaces (used in the link, e.g. ...#kitchen)
        name: the text on the button
-       file: the photo inside the "photos" folder
+       file: the photo file name
+       pins: (optional) text labels in the photo, e.g.
+             pins: [ { pitch: -5, yaw: 40, text: "Marble island" } ]
+             pitch = up/down (-90 floor, 0 eye level, 90 ceiling), yaw = left/right (-180 to 180)
    ========================================================================== */
 const TOUR = {
+  brand: "Nexspace-Realty",   // shown at the top and on the floor of every room. Use "" to hide.
   title: "2 bedroom, 2 bathroom condo",
   subtitle: "360\u00b0 virtual tour",
   rooms: [
@@ -129,12 +147,28 @@ const TOUR = {
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   document.getElementById("title").textContent = TOUR.title;
+  var brandEl = document.getElementById("brand");
+  if (TOUR.brand) { brandEl.textContent = TOUR.brand; } else { brandEl.remove(); }
+
+  function makePin(div, text) {
+    div.classList.add("pin");
+    var sp = document.createElement("span");
+    sp.textContent = text;
+    div.appendChild(sp);
+  }
   var sub = document.getElementById("subtitle");
   if (TOUR.subtitle) { sub.textContent = TOUR.subtitle; } else { sub.remove(); }
 
   var scenes = {};
   rooms.forEach(function (r) {
-    scenes[r.id] = { type: "equirectangular", panorama: r.file, yaw: r.yaw || 0, pitch: 0, hfov: r.hfov || 100 };
+    var spots = [];
+    if (TOUR.brand) {
+      spots.push({ pitch: -90, yaw: 0, type: "custom", cssClass: "pin brand-pin", createTooltipFunc: makePin, createTooltipArgs: TOUR.brand });
+    }
+    (r.pins || []).forEach(function (p) {
+      spots.push({ pitch: p.pitch, yaw: p.yaw, type: "custom", cssClass: "pin note", createTooltipFunc: makePin, createTooltipArgs: p.text });
+    });
+    scenes[r.id] = { type: "equirectangular", panorama: r.file, yaw: r.yaw || 0, pitch: 0, hfov: r.hfov || 100, hotSpots: spots };
   });
 
   var fromHash = location.hash.replace("#", "");
